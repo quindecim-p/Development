@@ -1,0 +1,56 @@
+import express from 'express'
+import mongoose from 'mongoose'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+import { registerValidation, loginValidation, editUserValidation, editPasswordValidation } from './validations.js'
+
+import {checkAuth, checkAdmin, handleValidationErrors} from './utils/index.js'
+
+import { UserController, ApplicationController } from './controllers/index.js'
+
+mongoose
+    .connect('mongodb+srv://admin:12345@cluster0.3ur5ejv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+    .then(() => console.log('DB ok'))
+    .catch((err) => console.log('DB error', err))
+
+const app = express()
+
+app.use(express.json())
+app.use(express.static(path.join(__dirname, './public')))
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, './public/main.html'))
+})
+
+app.post('/register', registerValidation, handleValidationErrors, UserController.register)
+app.post('/login', loginValidation, handleValidationErrors, UserController.login)
+
+app.get('/getMe', checkAuth, UserController.getMe)
+app.patch('/updateUser', checkAuth, editUserValidation, handleValidationErrors, UserController.updateUser)
+app.patch('/updatePassword', checkAuth, editPasswordValidation, handleValidationErrors, UserController.updatePassword)
+
+app.post('/sendingApplication', checkAuth, ApplicationController.sendingApplication)
+app.get('/getMyApplications', checkAuth, ApplicationController.getMyApplications)
+app.delete('/deleteMyApplication', checkAuth, ApplicationController.deleteMyApplication)
+
+app.get('/getAllApplications', checkAdmin, ApplicationController.getAllApplications)
+app.patch('/updateStatus', checkAdmin, ApplicationController.updateStatus)
+
+app.get('/getAllAccounts', checkAdmin, UserController.getAllAccounts)
+app.post('/createAdmin', checkAdmin, registerValidation, handleValidationErrors, UserController.createAdmin)
+app.patch('/ban', checkAdmin, UserController.ban)
+
+app.post('/createLog', checkAuth, UserController.createLog)
+app.get('/getAllLogs', checkAdmin, UserController.getAllLogs)
+
+app.listen(8000, (err) => {
+    if (err) {
+        return console.log(err)
+    }
+    console.log('Server OK')
+})
